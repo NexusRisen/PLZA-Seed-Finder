@@ -954,8 +954,8 @@ public partial class Gen9aSeedFinderForm : Form
                         if (pk == null)
                             continue;
 
-                        // Double-check IVs match what we validated (in case of RNG differences)
-                        if (!CheckIVRanges(pk, ivRanges))
+                        // Verify all criteria including shiny, nature, gender, ability, and IVs
+                        if (!CheckPokemonMatchesCriteria(pk, criteria, ivRanges))
                             continue;
 
                         var result = new SeedResult
@@ -1109,6 +1109,19 @@ public partial class Gen9aSeedFinderForm : Form
             if (!CheckAbilityQuick(pk.AbilityNumber, criteria.Ability))
                 return false;
         }
+
+        // Check shiny criteria
+        bool matchesShiny = criteria.Shiny switch
+        {
+            Shiny.Never => !pk.IsShiny,
+            Shiny.Always => pk.IsShiny,
+            Shiny.AlwaysSquare => pk.IsShiny && pk.ShinyXor == 0,
+            Shiny.AlwaysStar => pk.IsShiny && pk.ShinyXor > 0 && pk.ShinyXor < 16,
+            _ => true // Shiny.Random accepts any
+        };
+
+        if (!matchesShiny)
+            return false;
 
         return true;
     }
