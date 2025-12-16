@@ -1332,8 +1332,8 @@ public partial class Gen9aSeedFinderForm : Form
             _ => default
         };
 
-        if (param.GenderRatio == 0 && encounter is not EncounterTrade9a)
-            return false;
+        // Note: GenderRatio == 0 is valid (RatioMagicMale = male-only Pokemon like Latios)
+        // The pi == null check above already handles invalid encounter types
 
         // Only override SizeType if the encounter doesn't have a fixed scale
         // - Alpha encounters use SizeType.VALUE with Scale=255
