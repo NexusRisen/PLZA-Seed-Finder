@@ -474,10 +474,10 @@ namespace PLZASeedFinderPlugin.GUI
             // trainerNameText
             this.trainerNameText.Location = new System.Drawing.Point(80, 112);
             this.trainerNameText.Name = "trainerNameText";
-            this.trainerNameText.ReadOnly = true;
+            // Editable for custom OT names
             this.trainerNameText.Size = new System.Drawing.Size(270, 23);
             this.trainerNameText.TabIndex = 13;
-            this.trainerNameText.BackColor = System.Drawing.SystemColors.Control;
+            this.trainerNameText.BackColor = System.Drawing.SystemColors.Window;
 
             // ivGroup
             this.ivGroup.Controls.Add(this.ivMaxLabel);

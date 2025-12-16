@@ -441,16 +441,17 @@ public partial class Gen9aSeedFinderForm : Form
     }
 
     /// <summary>
-    /// Handles encounter combo selection changes to disable scale for Alpha encounters.
+    /// Handles encounter combo selection changes to disable scale for Alpha encounters
+    /// and lock trainer info for fixed trainer gifts.
     /// </summary>
     private void EncounterCombo_SelectedIndexChanged(object? sender, EventArgs e)
     {
-        // Check if selected encounter is an Alpha
         var selectedIndex = encounterCombo.SelectedValue as int? ?? -1;
         if (selectedIndex < 0)
         {
-            // "All Encounters" is selected, enable scale combo
+            // "All Encounters" is selected, enable all controls and restore user values
             scaleCombo.Enabled = true;
+            UnlockTrainerFields();
             return;
         }
 
@@ -459,6 +460,7 @@ public partial class Gen9aSeedFinderForm : Form
         if (string.IsNullOrEmpty(selectedEncounterText))
         {
             scaleCombo.Enabled = true;
+            UnlockTrainerFields();
             return;
         }
 
@@ -481,7 +483,87 @@ public partial class Gen9aSeedFinderForm : Form
         {
             scaleCombo.SelectedIndex = 0; // Set to "Any" when disabled
         }
+
+        // Check if any of the matching encounters are fixed trainer gifts
+        var fixedTrainerGift = matchingEncounters
+            .Select(e => e.Encounter)
+            .OfType<EncounterGift9a>()
+            .FirstOrDefault(g => g.Trainer != TrainerGift9a.None);
+
+        if (fixedTrainerGift != null)
+        {
+            LockTrainerFields(fixedTrainerGift.Trainer);
+        }
+        else
+        {
+            UnlockTrainerFields();
+        }
     }
+
+    // Store user's original trainer values when locking for fixed trainer gifts
+    private string _userOT = "";
+    private decimal _userTID = 0;
+    private decimal _userSID = 0;
+    private bool _trainerFieldsLocked = false;
+
+    /// <summary>
+    /// Locks trainer fields and populates them with fixed trainer info.
+    /// </summary>
+    private void LockTrainerFields(TrainerGift9a trainer)
+    {
+        // Save user values if not already locked
+        if (!_trainerFieldsLocked)
+        {
+            _userOT = trainerNameText.Text;
+            _userTID = tidNum.Value;
+            _userSID = sidNum.Value;
+        }
+
+        // Get fixed trainer info from PKHeX
+        var lang = _saveFileEditor.SAV.Language;
+        var otName = EncounterGift9a.GetFixedTrainerName(trainer, lang);
+        var id32 = EncounterGift9a.GetFixedTrainerID32(trainer);
+
+        // Convert ID32 to display format (TID7/SID7)
+        var displayTID = id32 % 1000000;
+        var displaySID = id32 / 1000000;
+
+        // Set values and lock fields
+        trainerNameText.Text = otName;
+        trainerNameText.ReadOnly = true;
+        trainerNameText.BackColor = System.Drawing.SystemColors.Control;
+
+        tidNum.Value = displayTID;
+        tidNum.Enabled = false;
+
+        sidNum.Value = displaySID;
+        sidNum.Enabled = false;
+
+        _trainerFieldsLocked = true;
+    }
+
+    /// <summary>
+    /// Unlocks trainer fields and restores user's original values.
+    /// </summary>
+    private void UnlockTrainerFields()
+    {
+        if (!_trainerFieldsLocked)
+            return;
+
+        // Restore user values
+        trainerNameText.Text = _userOT;
+        trainerNameText.ReadOnly = false;
+        trainerNameText.BackColor = System.Drawing.SystemColors.Window;
+
+        tidNum.Value = _userTID;
+        tidNum.Enabled = true;
+
+        sidNum.Value = _userSID;
+        sidNum.Enabled = true;
+
+        _trainerFieldsLocked = false;
+    }
+
 
     /// <summary>
     /// Loads trainer data from the current save file.
@@ -529,8 +611,15 @@ public partial class Gen9aSeedFinderForm : Form
         // Gather all species that have encounters in PLZA
         var validSpecies = new HashSet<ushort>();
 
-        // Add wild encounter species
+        // Add wild encounter species (Standard Lumiose)
         foreach (var area in Encounters9a.Slots)
+        {
+            foreach (var slot in area.Slots)
+                validSpecies.Add(slot.Species);
+        }
+
+        // Add wild encounter species (Hyperspace/Mega Dimension DLC)
+        foreach (var area in Encounters9a.Hyperspace)
         {
             foreach (var slot in area.Slots)
                 validSpecies.Add(slot.Species);
@@ -734,9 +823,19 @@ public partial class Gen9aSeedFinderForm : Form
     private static List<EncounterSlot9a> GetWildEncounters(ushort species, GameVersion version)
     {
         var encounters = new List<EncounterSlot9a>();
-        var areas = Encounters9a.Slots;
+        // Search Standard Lumiose encounters
 
-        foreach (var area in areas)
+        foreach (var area in Encounters9a.Slots)
+        {
+            foreach (var slot in area.Slots)
+            {
+                if (slot.Species == species)
+                    encounters.Add(slot);
+            }
+        }
+
+        // Search Hyperspace/Mega Dimension DLC encounters
+        foreach (var area in Encounters9a.Hyperspace)
         {
             foreach (var slot in area.Slots)
             {
@@ -1054,7 +1153,7 @@ public partial class Gen9aSeedFinderForm : Form
         {
             TID16 = tid16,
             SID16 = sid16,
-            OT = _saveFileEditor.SAV.OT,
+            OT = trainerNameText.Text,
             Gender = _saveFileEditor.SAV.Gender,
             Language = _saveFileEditor.SAV.Language,
         };
@@ -1434,9 +1533,16 @@ public partial class Gen9aSeedFinderForm : Form
         if (encounter is EncounterGift9a gift && gift.Trainer != 0)
         {
             // PKHeX requires these specific trainer details for validation
-            pk.OriginalTrainerName = GetFixedTrainerName(gift.Trainer, lang);
-            pk.OriginalTrainerGender = GetFixedTrainerGender(gift.Trainer);
-            pk.ID32 = GetFixedTrainerID32(gift.Trainer);
+            pk.OriginalTrainerName = EncounterGift9a.GetFixedTrainerName(gift.Trainer, lang);
+            pk.OriginalTrainerGender = EncounterGift9a.GetFixedTrainerGender(gift.Trainer);
+            pk.ID32 = EncounterGift9a.GetFixedTrainerID32(gift.Trainer);
+
+            // Handle fixed nicknames (e.g., Gimmighoul -> "Chestly")
+            if (gift.IsFixedNickname)
+            {
+                pk.Nickname = gift.GetNickname(lang);
+                pk.IsNicknamed = true;
+            }
         }
         else
         {
@@ -1541,65 +1647,6 @@ public partial class Gen9aSeedFinderForm : Form
         pk.SetMoves(moves);
     }
 
-    private static string GetFixedTrainerName(TrainerGift9a trainer, int language) => trainer switch
-    {
-        TrainerGift9a.Lucario => language switch
-        {
-            (int)LanguageID.Japanese => "コルニ",
-            (int)LanguageID.English => "Korrina",
-            (int)LanguageID.French => "Cornélia",
-            (int)LanguageID.Italian => "Ornella",
-            (int)LanguageID.German => "Connie",
-            (int)LanguageID.Spanish => "Corelia",
-            (int)LanguageID.Korean => "코르니",
-            (int)LanguageID.ChineseS => "可尔妮",
-            (int)LanguageID.ChineseT => "可爾妮",
-            _ => "Korrina",
-        },
-        TrainerGift9a.Floette => language switch
-        {
-            (int)LanguageID.Japanese => "ＡＺ",
-            (int)LanguageID.English => "AZ",
-            (int)LanguageID.French => "A.Z.",
-            (int)LanguageID.Italian => "AZ",
-            (int)LanguageID.German => "Azett",
-            (int)LanguageID.Spanish => "A. Z.",
-            (int)LanguageID.Korean => "AZ",
-            (int)LanguageID.ChineseS => "ＡＺ",
-            (int)LanguageID.ChineseT => "ＡＺ",
-            _ => "AZ",
-        },
-        TrainerGift9a.Stunfisk => language switch
-        {
-            (int)LanguageID.Japanese => "グラウン",
-            (int)LanguageID.English => "Terri",
-            (int)LanguageID.French => "Gad",
-            (int)LanguageID.Italian => "Terrence",
-            (int)LanguageID.German => "Terry",
-            (int)LanguageID.Spanish => "Terry",
-            (int)LanguageID.Korean => "그라운",
-            (int)LanguageID.ChineseS => "帝尚",
-            (int)LanguageID.ChineseT => "帝尚",
-            _ => "Terri",
-        },
-        _ => "Unknown",
-    };
-
-    private static byte GetFixedTrainerGender(TrainerGift9a trainer) => trainer switch
-    {
-        TrainerGift9a.Lucario => 1,
-        TrainerGift9a.Floette => 0,
-        TrainerGift9a.Stunfisk => 0,
-        _ => 0,
-    };
-
-    private static uint GetFixedTrainerID32(TrainerGift9a trainer) => trainer switch
-    {
-        TrainerGift9a.Lucario => 912562,
-        TrainerGift9a.Floette => 1,
-        TrainerGift9a.Stunfisk => 250932,
-        _ => 0,
-    };
 
     /// <summary>
     /// Tries to generate a Pokémon from an encounter and seed.
@@ -2224,7 +2271,7 @@ public partial class Gen9aSeedFinderForm : Form
         {
             return Encounter switch
             {
-                EncounterSlot9a slot => $"Wild - Lv.{slot.LevelMin}{(slot.LevelMax != slot.LevelMin ? $"-{slot.LevelMax}" : "")} {(slot.IsAlpha ? "(Alpha)" : "")}",
+                EncounterSlot9a slot => $"{(slot.Type == SlotType9a.Hyperspace ? "Hyperspace" : "Wild")} - Lv.{slot.LevelMin}{(slot.LevelMax != slot.LevelMin ? $"-{slot.LevelMax}" : "")} {(slot.IsAlpha ? "(Alpha)" : "")}",
                 EncounterStatic9a static9a => $"Static - Lv.{static9a.Level} {(static9a.IsAlpha ? "(Alpha)" : "")}",
                 EncounterGift9a gift => $"Gift - Lv.{gift.Level}",
                 EncounterTrade9a trade => $"Trade - Lv.{trade.Level}",
@@ -2240,7 +2287,7 @@ public partial class Gen9aSeedFinderForm : Form
         {
             return Encounter switch
             {
-                EncounterSlot9a => "Wild",
+                EncounterSlot9a slot => slot.Type == SlotType9a.Hyperspace ? "Hyperspace" : "Wild",
                 EncounterStatic9a => "Static",
                 EncounterGift9a => "Gift",
                 EncounterTrade9a => "Trade",
