@@ -718,6 +718,10 @@ public partial class Gen9aSeedFinderForm : Form
         formCombo.DisplayMember = "Text";
         formCombo.ValueMember = "Value";
         formCombo.DataSource = forms.Select((f, i) => new ComboItem(f, i)).ToList();
+
+        // Ensure form 0 is selected after changing DataSource
+        if (formCombo.Items.Count > 0)
+            formCombo.SelectedIndex = 0;
     }
 
     /// <summary>
@@ -740,10 +744,10 @@ public partial class Gen9aSeedFinderForm : Form
         var key = ((ushort)species, targetForm);
         if (_evolvedSpeciesCache.TryGetValue(key, out var preEvolutions))
         {
-            // Add encounters from all pre-evolutions
+            // Add encounters from all pre-evolutions (filtered by form)
             foreach (var (preEvoSpecies, preEvoForm) in preEvolutions)
             {
-                AddEncountersForSpecies(preEvoSpecies, selectedSources, encounters,
+                AddEncountersForSpeciesWithForm(preEvoSpecies, preEvoForm, selectedSources, encounters,
                     targetEvolutionSpecies: (ushort)species, targetEvolutionForm: targetForm);
             }
         }
@@ -795,6 +799,50 @@ public partial class Gen9aSeedFinderForm : Form
     }
 
     /// <summary>
+    /// Adds encounters for a specific species AND form to the encounter list.
+    /// Used for pre-evolution encounters where form matters (e.g., only Galarian Farfetch'd evolves to Sirfetch'd).
+    /// </summary>
+    private void AddEncountersForSpeciesWithForm(ushort species, byte form, EncounterSource selectedSources, List<EncounterWrapper> encounters,
+        ushort targetEvolutionSpecies, byte targetEvolutionForm)
+    {
+        // Get wild encounters filtered by form
+        if (selectedSources.HasFlag(EncounterSource.Wild))
+        {
+            var wildEncounters = GetWildEncounters(species, GameVersion.ZA).Where(e => e.Form == form).ToList();
+            encounters.AddRange(wildEncounters.Select(e => new EncounterWrapper(e, GameVersion.ZA, targetEvolutionSpecies, targetEvolutionForm)));
+            if (wildEncounters.Count > 0)
+                _availableSources |= EncounterSource.Wild;
+        }
+
+        // Get static encounters filtered by form
+        if (selectedSources.HasFlag(EncounterSource.Static))
+        {
+            var staticEncounters = GetStaticEncounters(species).Where(e => e.Form == form).ToList();
+            encounters.AddRange(staticEncounters.Select(e => new EncounterWrapper(e, GameVersion.ZA, targetEvolutionSpecies, targetEvolutionForm)));
+            if (staticEncounters.Count > 0)
+                _availableSources |= EncounterSource.Static;
+        }
+
+        // Get gift encounters filtered by form
+        if (selectedSources.HasFlag(EncounterSource.Gift))
+        {
+            var giftEncounters = GetGiftEncounters(species, GameVersion.ZA).Where(e => e.Form == form).ToList();
+            encounters.AddRange(giftEncounters.Select(e => new EncounterWrapper(e, GameVersion.ZA, targetEvolutionSpecies, targetEvolutionForm)));
+            if (giftEncounters.Count > 0)
+                _availableSources |= EncounterSource.Gift;
+        }
+
+        // Get trade encounters filtered by form
+        if (selectedSources.HasFlag(EncounterSource.Trade))
+        {
+            var tradeEncounters = GetTradeEncounters(species).Where(e => e.Form == form).ToList();
+            encounters.AddRange(tradeEncounters.Select(e => new EncounterWrapper(e, GameVersion.ZA, targetEvolutionSpecies, targetEvolutionForm)));
+            if (tradeEncounters.Count > 0)
+                _availableSources |= EncounterSource.Trade;
+        }
+    }
+
+    /// <summary>
     /// Gets the currently selected encounter sources from checkboxes.
     /// </summary>
     /// <returns>Combined encounter source flags</returns>
@@ -817,7 +865,7 @@ public partial class Gen9aSeedFinderForm : Form
 
         var form = (byte)(formCombo.SelectedValue as int? ?? 0);
         var groupedEncounters = _cachedEncounters
-            .Where(e => e.Form == form || e.Form >= EncounterUtil.FormDynamic)
+            .Where(e => MatchesTargetForm(e, form))
             .GroupBy(e => e.GetDescription())
             .Select((g, i) => new { Description = g.Key, Index = i })
             .ToList();
@@ -828,6 +876,25 @@ public partial class Gen9aSeedFinderForm : Form
         encounterCombo.ValueMember = "Value";
         encounterCombo.DataSource = items;
         encounterCombo.SelectedIndex = 0;
+    }
+
+    /// <summary>
+    /// Checks if an encounter wrapper matches the target form for display filtering.
+    /// For evolution encounters, uses the target evolution form.
+    /// For direct encounters, uses the encounter's own form.
+    /// </summary>
+    private static bool MatchesTargetForm(EncounterWrapper e, byte targetForm)
+    {
+        // Dynamic forms always match
+        if (e.Form >= EncounterUtil.FormDynamic)
+            return true;
+
+        // For evolution encounters, check the target evolution form
+        if (e.IsEvolutionEncounter)
+            return e.TargetEvolutionForm == targetForm;
+
+        // For direct encounters, check the encounter's form
+        return e.Form == targetForm;
     }
 
     /// <summary>
@@ -1074,15 +1141,15 @@ public partial class Gen9aSeedFinderForm : Form
     /// <returns>Evolved Pokemon, or null if evolution failed</returns>
     private static PA9? EvolvePokemon(PA9 pk, ushort targetSpecies, byte targetForm, ushort preEvoSpecies)
     {
-        // Store original values we need to preserve
-        var originalLevel = pk.CurrentLevel;
+        // MINIMAL EVOLUTION: Only change what's absolutely necessary
+        // Keep pre-evolution's moves so PKHeX can trace the evolution chain
 
         // Update species and form
         pk.Species = targetSpecies;
         pk.Form = targetForm;
 
         // Get personal info for the evolved species
-        var pi = PersonalTable.ZA[targetSpecies, targetForm];
+        var pi = (PersonalInfo9ZA)PersonalTable.ZA[targetSpecies, targetForm];
 
         // Update nickname to evolved species name (if not nicknamed)
         if (!pk.IsNicknamed)
@@ -1097,35 +1164,17 @@ public partial class Gen9aSeedFinderForm : Form
             pk.ChangeFormArgument(requiredFormArg);
         }
 
-        // Ensure level is appropriate (at least at evolution level, but maintain original if higher)
-        // For seed finder, we typically want the base encounter level, so keep original
-        pk.CurrentLevel = originalLevel;
-
-        // Update moves for evolved species
-        var (learn, plus) = LearnSource9ZA.GetLearnsetAndPlus(targetSpecies, targetForm);
-        Span<ushort> moves = stackalloc ushort[4];
-
-        // Check if Alpha - preserve alpha status and move
-        if (pk.IsAlpha)
-        {
-            learn.SetEncounterMovesBackwards(originalLevel, moves, sameDescend: false);
-            moves[0] = pi.AlphaMove;
-            pk.SetMoves(moves);
-        }
-        else
-        {
-            learn.SetEncounterMoves(originalLevel, moves);
-            pk.SetMoves(moves);
-        }
-
-        // Update Plus move flags
-        PlusRecordApplicator.SetPlusFlagsEncounter(pk, pi, plus, originalLevel);
-
         // Update base friendship for evolved species
         pk.OriginalTrainerFriendship = pi.BaseFriendship;
 
-        // Heal PP for new moves
-        pk.HealPP();
+        // DO NOT change moves - keep pre-evolution's moves
+        // PKHeX validates evolved Pokemon by tracing back to the pre-evolution encounter
+
+        // BUT DO update Plus flags for the evolved species
+        // Clear all flags first, then set based on evolved species' learnset
+        var (_, plus) = LearnSource9ZA.GetLearnsetAndPlus(targetSpecies, targetForm);
+        pk.ClearPlusFlags(pi.PlusCountTotal);
+        PlusRecordApplicator.SetPlusFlagsEncounter(pk, pi, plus, pk.CurrentLevel);
 
         return pk;
     }
@@ -1727,10 +1776,10 @@ public partial class Gen9aSeedFinderForm : Form
     {
         if (encounterIndex == -1)
         {
-            return _cachedEncounters.Where(e => e.Form == form || e.Form >= EncounterUtil.FormDynamic).ToList();
+            return _cachedEncounters.Where(e => MatchesTargetForm(e, form)).ToList();
         }
 
-        return _cachedEncounters.Where(e => e.GetDescription() == selectedEncounterText && (e.Form == form || e.Form >= EncounterUtil.FormDynamic)).ToList();
+        return _cachedEncounters.Where(e => e.GetDescription() == selectedEncounterText && MatchesTargetForm(e, form)).ToList();
     }
 
     /// <summary>
