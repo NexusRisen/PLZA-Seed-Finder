@@ -263,3 +263,6 @@ __pycache__/
 # Claude Code
 claude/
 .claude/
+
+# Local build configuration (contains private paths)
+local.props

@@ -1,0 +1,11 @@
+<Project>
+  <PropertyGroup>
+    <!--
+      Copy this file to 'local.props' and update the path below.
+      The local.props file is gitignored and won't be committed.
+
+      This enables auto-deploy of the plugin DLL to your PKHeX plugins folder after each build.
+    -->
+    <PKHeXPluginsPath>C:\path\to\PKHeX\PKHeX.WinForms\MainWindow\Plugins</PKHeXPluginsPath>
+  </PropertyGroup>
+</Project>

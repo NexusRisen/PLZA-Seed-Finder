@@ -436,8 +436,24 @@ public partial class Gen9aSeedFinderForm : Form
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.SetProperty,
             null, resultsGrid, [true]);
 
+        // Hook up form combo to reload encounters when form changes
+        formCombo.SelectedIndexChanged += FormCombo_SelectedIndexChanged;
+
         // Hook up encounter combo to disable scale for Alpha encounters
         encounterCombo.SelectedIndexChanged += EncounterCombo_SelectedIndexChanged;
+    }
+
+    /// <summary>
+    /// Handles form selection change event to reload encounters for the new form.
+    /// </summary>
+    private void FormCombo_SelectedIndexChanged(object? sender, EventArgs e)
+    {
+        if (speciesCombo.SelectedValue is not int species)
+            return;
+
+        UpdateEncounterList(species);
+        UpdateSourceDisplay();
+        UpdateEncounterCombo();
     }
 
     /// <summary>
@@ -1756,10 +1772,13 @@ public partial class Gen9aSeedFinderForm : Form
             return false;
 
         // Use each encounter's GetParams method to get the proper parameters with correlation
+        // Pass shiny charm and shiny power settings to encounters that support them (Slot/Static only)
+        bool hasShinyCharm = shinyCharmCheck.Checked;
+        bool hasShinyPower = shinyPowerCheck.Checked;
         var param = encounter switch
         {
-            EncounterSlot9a slot => slot.GetParams((PersonalInfo9ZA)pi),
-            EncounterStatic9a static9a => static9a.GetParams((PersonalInfo9ZA)pi),
+            EncounterSlot9a slot => slot.GetParams((PersonalInfo9ZA)pi, hasShinyCharm, hasShinyPower),
+            EncounterStatic9a static9a => static9a.GetParams((PersonalInfo9ZA)pi, hasShinyCharm, hasShinyPower),
             EncounterGift9a gift => gift.GetParams((PersonalInfo9ZA)pi),
             EncounterTrade9a trade => trade.GetParams((PersonalInfo9ZA)pi),
             _ => default
@@ -2106,10 +2125,13 @@ public partial class Gen9aSeedFinderForm : Form
                 return null;
 
             // Use each encounter's GetParams method to get the proper parameters with correlation
+            // Pass shiny charm and shiny power settings to encounters that support them (Slot/Static only)
+            bool hasShinyCharm = shinyCharmCheck.Checked;
+            bool hasShinyPower = shinyPowerCheck.Checked;
             var param = encounter switch
             {
-                EncounterSlot9a slot => slot.GetParams((PersonalInfo9ZA)pi),
-                EncounterStatic9a static9a => static9a.GetParams((PersonalInfo9ZA)pi),
+                EncounterSlot9a slot => slot.GetParams((PersonalInfo9ZA)pi, hasShinyCharm, hasShinyPower),
+                EncounterStatic9a static9a => static9a.GetParams((PersonalInfo9ZA)pi, hasShinyCharm, hasShinyPower),
                 EncounterGift9a gift => gift.GetParams((PersonalInfo9ZA)pi),
                 EncounterTrade9a trade => trade.GetParams((PersonalInfo9ZA)pi),
                 _ => default

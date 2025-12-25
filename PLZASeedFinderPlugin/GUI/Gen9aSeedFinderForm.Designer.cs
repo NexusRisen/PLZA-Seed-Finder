@@ -41,6 +41,10 @@ namespace PLZASeedFinderPlugin.GUI
             this.giftEncounterCheck = new System.Windows.Forms.CheckBox();
             this.tradeEncounterCheck = new System.Windows.Forms.CheckBox();
 
+            this.shinyBonusGroup = new System.Windows.Forms.GroupBox();
+            this.shinyCharmCheck = new System.Windows.Forms.CheckBox();
+            this.shinyPowerCheck = new System.Windows.Forms.CheckBox();
+
             this.encounterGroup = new System.Windows.Forms.GroupBox();
             this.encounterLabel = new System.Windows.Forms.Label();
             this.encounterCombo = new System.Windows.Forms.ComboBox();
@@ -110,6 +114,7 @@ namespace PLZASeedFinderPlugin.GUI
             this.searchPanel.SuspendLayout();
             this.speciesGroup.SuspendLayout();
             this.sourceFilterGroup.SuspendLayout();
+            this.shinyBonusGroup.SuspendLayout();
             this.encounterGroup.SuspendLayout();
             this.criteriaGroup.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.tidNum)).BeginInit();
@@ -137,10 +142,10 @@ namespace PLZASeedFinderPlugin.GUI
             // Form
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1100, 750);
+            this.ClientSize = new System.Drawing.Size(1100, 800);
             this.Controls.Add(this.mainPanel);
             this.Controls.Add(this.statusStrip);
-            this.MinimumSize = new System.Drawing.Size(1100, 700);
+            this.MinimumSize = new System.Drawing.Size(1100, 750);
             this.Name = "Gen9aSeedFinderForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
             this.Text = "PLZA Seed Finder";
@@ -169,6 +174,7 @@ namespace PLZASeedFinderPlugin.GUI
             this.searchPanel.Controls.Add(this.ivGroup);
             this.searchPanel.Controls.Add(this.criteriaGroup);
             this.searchPanel.Controls.Add(this.encounterGroup);
+            this.searchPanel.Controls.Add(this.shinyBonusGroup);
             this.searchPanel.Controls.Add(this.sourceFilterGroup);
             this.searchPanel.Controls.Add(this.speciesGroup);
             this.searchPanel.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -248,7 +254,7 @@ namespace PLZASeedFinderPlugin.GUI
             this.sourceFilterGroup.Controls.Add(this.wildEncounterCheck);
             this.sourceFilterGroup.Location = new System.Drawing.Point(8, 134);
             this.sourceFilterGroup.Name = "sourceFilterGroup";
-            this.sourceFilterGroup.Size = new System.Drawing.Size(360, 70);
+            this.sourceFilterGroup.Size = new System.Drawing.Size(360, 50);
             this.sourceFilterGroup.TabIndex = 1;
             this.sourceFilterGroup.TabStop = false;
             this.sourceFilterGroup.Text = "Encounter Sources";
@@ -301,13 +307,45 @@ namespace PLZASeedFinderPlugin.GUI
             this.tradeEncounterCheck.UseVisualStyleBackColor = true;
             this.tradeEncounterCheck.CheckedChanged += new System.EventHandler(this.SourceCheckChanged);
 
+            // shinyBonusGroup
+            this.shinyBonusGroup.Controls.Add(this.shinyPowerCheck);
+            this.shinyBonusGroup.Controls.Add(this.shinyCharmCheck);
+            this.shinyBonusGroup.Location = new System.Drawing.Point(8, 190);
+            this.shinyBonusGroup.Name = "shinyBonusGroup";
+            this.shinyBonusGroup.Size = new System.Drawing.Size(360, 50);
+            this.shinyBonusGroup.TabIndex = 2;
+            this.shinyBonusGroup.TabStop = false;
+            this.shinyBonusGroup.Text = "Shiny Bonuses";
+
+            // shinyCharmCheck
+            this.shinyCharmCheck.AutoSize = true;
+            this.shinyCharmCheck.Checked = true;
+            this.shinyCharmCheck.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.shinyCharmCheck.Location = new System.Drawing.Point(10, 22);
+            this.shinyCharmCheck.Name = "shinyCharmCheck";
+            this.shinyCharmCheck.Size = new System.Drawing.Size(90, 19);
+            this.shinyCharmCheck.TabIndex = 0;
+            this.shinyCharmCheck.Text = "Shiny Charm";
+            this.shinyCharmCheck.UseVisualStyleBackColor = true;
+
+            // shinyPowerCheck
+            this.shinyPowerCheck.AutoSize = true;
+            this.shinyPowerCheck.Checked = true;
+            this.shinyPowerCheck.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.shinyPowerCheck.Location = new System.Drawing.Point(110, 22);
+            this.shinyPowerCheck.Name = "shinyPowerCheck";
+            this.shinyPowerCheck.Size = new System.Drawing.Size(150, 19);
+            this.shinyPowerCheck.TabIndex = 1;
+            this.shinyPowerCheck.Text = "Shiny Power (Hyperspace)";
+            this.shinyPowerCheck.UseVisualStyleBackColor = true;
+
             // encounterGroup
             this.encounterGroup.Controls.Add(this.encounterCombo);
             this.encounterGroup.Controls.Add(this.encounterLabel);
-            this.encounterGroup.Location = new System.Drawing.Point(8, 210);
+            this.encounterGroup.Location = new System.Drawing.Point(8, 246);
             this.encounterGroup.Name = "encounterGroup";
             this.encounterGroup.Size = new System.Drawing.Size(360, 55);
-            this.encounterGroup.TabIndex = 2;
+            this.encounterGroup.TabIndex = 3;
             this.encounterGroup.TabStop = false;
             this.encounterGroup.Text = "Encounter Selection";
 
@@ -342,10 +380,10 @@ namespace PLZASeedFinderPlugin.GUI
             this.criteriaGroup.Controls.Add(this.abilityLabel);
             this.criteriaGroup.Controls.Add(this.genderCombo);
             this.criteriaGroup.Controls.Add(this.genderLabel);
-            this.criteriaGroup.Location = new System.Drawing.Point(8, 271);
+            this.criteriaGroup.Location = new System.Drawing.Point(8, 307);
             this.criteriaGroup.Name = "criteriaGroup";
             this.criteriaGroup.Size = new System.Drawing.Size(360, 145);
-            this.criteriaGroup.TabIndex = 3;
+            this.criteriaGroup.TabIndex = 4;
             this.criteriaGroup.TabStop = false;
             this.criteriaGroup.Text = "Search Criteria";
 
@@ -502,10 +540,10 @@ namespace PLZASeedFinderPlugin.GUI
             this.ivGroup.Controls.Add(this.ivHpMax);
             this.ivGroup.Controls.Add(this.ivHpMin);
             this.ivGroup.Controls.Add(this.ivHpLabel);
-            this.ivGroup.Location = new System.Drawing.Point(8, 422);
+            this.ivGroup.Location = new System.Drawing.Point(8, 458);
             this.ivGroup.Name = "ivGroup";
             this.ivGroup.Size = new System.Drawing.Size(360, 140);
-            this.ivGroup.TabIndex = 4;
+            this.ivGroup.TabIndex = 5;
             this.ivGroup.TabStop = false;
             this.ivGroup.Text = "IV Ranges";
 
@@ -688,10 +726,10 @@ namespace PLZASeedFinderPlugin.GUI
             this.searchOptionsGroup.Controls.Add(this.startSeedLabel);
             this.searchOptionsGroup.Controls.Add(this.maxSeedsNum);
             this.searchOptionsGroup.Controls.Add(this.maxSeedsLabel);
-            this.searchOptionsGroup.Location = new System.Drawing.Point(8, 568);
+            this.searchOptionsGroup.Location = new System.Drawing.Point(8, 604);
             this.searchOptionsGroup.Name = "searchOptionsGroup";
             this.searchOptionsGroup.Size = new System.Drawing.Size(360, 150);
-            this.searchOptionsGroup.TabIndex = 5;
+            this.searchOptionsGroup.TabIndex = 6;
             this.searchOptionsGroup.TabStop = false;
             this.searchOptionsGroup.Text = "Search Options";
 
@@ -855,6 +893,8 @@ namespace PLZASeedFinderPlugin.GUI
             this.speciesGroup.PerformLayout();
             this.sourceFilterGroup.ResumeLayout(false);
             this.sourceFilterGroup.PerformLayout();
+            this.shinyBonusGroup.ResumeLayout(false);
+            this.shinyBonusGroup.PerformLayout();
             this.encounterGroup.ResumeLayout(false);
             this.encounterGroup.PerformLayout();
             this.criteriaGroup.ResumeLayout(false);
@@ -906,6 +946,10 @@ namespace PLZASeedFinderPlugin.GUI
         private System.Windows.Forms.CheckBox staticEncounterCheck;
         private System.Windows.Forms.CheckBox giftEncounterCheck;
         private System.Windows.Forms.CheckBox tradeEncounterCheck;
+
+        private System.Windows.Forms.GroupBox shinyBonusGroup;
+        private System.Windows.Forms.CheckBox shinyCharmCheck;
+        private System.Windows.Forms.CheckBox shinyPowerCheck;
 
         private System.Windows.Forms.GroupBox encounterGroup;
         private System.Windows.Forms.Label encounterLabel;
